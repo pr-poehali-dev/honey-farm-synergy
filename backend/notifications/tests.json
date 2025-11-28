@@ -1,0 +1,31 @@
+{
+  "tests": [
+    {
+      "name": "Get notifications list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "notifications": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create new notification",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "type": "custom",
+        "title": "Тестовое уведомление",
+        "message": "Это тестовое сообщение",
+        "icon": "🧪"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "notification": "object",
+        "message": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

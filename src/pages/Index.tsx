@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import LiveStreamModal from '@/components/LiveStreamModal';
 
 const regions = [
   { id: 'crimea', name: 'Крым', emoji: '🏖️', description: 'Целебный горный мед' },
@@ -55,6 +56,8 @@ export default function Index() {
   const [selectedHiveType, setSelectedHiveType] = useState('');
   const [nickname, setNickname] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
+  const [showLiveStream, setShowLiveStream] = useState(false);
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
   const handleRegister = () => {
     if (nickname.trim()) {
@@ -63,18 +66,47 @@ export default function Index() {
     }
   };
 
-  const handleRentHive = () => {
+  const handleRentHive = async () => {
     if (!selectedRegion || !selectedHiveType) {
       toast.error('Выберите регион и тип улья');
       return;
     }
     
     const hive = hiveTypes.find(h => h.id === selectedHiveType);
-    if (hive && userBalance >= hive.price) {
+    if (!hive) return;
+
+    if (userBalance >= hive.price) {
       setUserBalance(userBalance - hive.price);
       toast.success(`Улей арендован! Сезон начался 🎉`);
-    } else {
-      toast.error('Недостаточно ПчелоКоинов');
+      return;
+    }
+
+    setIsPaymentProcessing(true);
+    try {
+      const response = await fetch('https://functions.poehali.dev/b0e9056d-9118-4528-a8a5-b019c8d4e376', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': nickname,
+        },
+        body: JSON.stringify({
+          amount: hive.price,
+          description: `Аренда улья ${hive.name} в регионе ${regions.find(r => r.id === selectedRegion)?.name}`,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.payment_url) {
+        window.open(data.payment_url, '_blank');
+        toast.success('Перенаправляем на страницу оплаты...');
+      } else {
+        toast.error('Ошибка создания платежа');
+      }
+    } catch (error) {
+      toast.error('Ошибка подключения к платежной системе');
+    } finally {
+      setIsPaymentProcessing(false);
     }
   };
 

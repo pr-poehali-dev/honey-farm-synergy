@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight request",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Create payment without keys (should fail gracefully)",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "amount": 24000,
+        "description": "Аренда улья Классический"
+      },
+      "headers": {
+        "x-user-id": "test_user_123"
+      },
+      "expectedStatus": 500,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

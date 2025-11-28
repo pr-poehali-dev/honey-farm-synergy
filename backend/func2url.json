@@ -1,0 +1,5 @@
+{
+  "notifications": "https://functions.poehali.dev/4bed2e99-9e38-41d3-9ce7-e454e69b9e76",
+  "payment": "https://functions.poehali.dev/b0e9056d-9118-4528-a8a5-b019c8d4e376",
+  "camera-stream": "https://functions.poehali.dev/c7bf8248-4769-441c-be16-62d42ca5fd4c"
+}
