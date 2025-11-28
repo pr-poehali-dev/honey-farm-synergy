@@ -1,14 +1,569 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Icon from '@/components/ui/icon';
+import { toast } from 'sonner';
 
-const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+const regions = [
+  { id: 'crimea', name: 'Крым', emoji: '🏖️', description: 'Целебный горный мед' },
+  { id: 'altai', name: 'Алтай', emoji: '⛰️', description: 'Таежный медонос' },
+  { id: 'bashkiria', name: 'Башкирия', emoji: '🌲', description: 'Башкирский липовый мед' },
+  { id: 'krasnodar', name: 'Краснодарский край', emoji: '🌻', description: 'Акациевый и подсолнечный' },
+];
+
+const hiveTypes = [
+  { 
+    id: 'classic', 
+    name: 'Классический', 
+    price: 24000, 
+    avgYield: 30,
+    description: 'Стандартный улей на 12 рамок',
+    icon: '🏠'
+  },
+  { 
+    id: 'koloda', 
+    name: 'Колода', 
+    price: 24000, 
+    avgYield: 30,
+    description: 'Традиционный улей-колода',
+    icon: '🪵'
+  },
+];
+
+const leaderboard = [
+  { rank: 1, nickname: 'ДикийВася89', type: 'Пасечник', coins: 145000, badge: '🏆' },
+  { rank: 2, nickname: 'МедоваяКоролева', type: 'Пасечник', coins: 132000, badge: '🥈' },
+  { rank: 3, nickname: 'АлтайскийМедведь', type: 'Пасечник', coins: 98000, badge: '🥉' },
+  { rank: 4, nickname: 'БашкирскийПчеловод', type: 'Пасечник', coins: 87000, badge: '🐝' },
+  { rank: 5, nickname: 'КрымскийФермер', type: 'Пасечник', coins: 76000, badge: '🐝' },
+];
+
+export default function Index() {
+  const [userBalance, setUserBalance] = useState(50000);
+  const [warehouse, setWarehouse] = useState([
+    { id: 1, name: 'Мед в сотах', amount: 53, unit: 'кг', icon: '🍯' },
+  ]);
+  const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedHiveType, setSelectedHiveType] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  const handleRegister = () => {
+    if (nickname.trim()) {
+      setIsRegistered(true);
+      toast.success(`Добро пожаловать, ${nickname}! 🐝`);
+    }
+  };
+
+  const handleRentHive = () => {
+    if (!selectedRegion || !selectedHiveType) {
+      toast.error('Выберите регион и тип улья');
+      return;
+    }
+    
+    const hive = hiveTypes.find(h => h.id === selectedHiveType);
+    if (hive && userBalance >= hive.price) {
+      setUserBalance(userBalance - hive.price);
+      toast.success(`Улей арендован! Сезон начался 🎉`);
+    } else {
+      toast.error('Недостаточно ПчелоКоинов');
+    }
+  };
+
+  const handleProcessHoney = () => {
+    const honeyInComb = warehouse.find(item => item.name === 'Мед в сотах');
+    if (honeyInComb && honeyInComb.amount >= 53) {
+      setWarehouse([
+        { id: 2, name: 'Мед жидкий', amount: 45, unit: 'кг', icon: '🍯' },
+      ]);
+      toast.success('Мед отжат! Получено 45 кг жидкого меда');
+    }
+  };
+
+  const handleSellHoney = () => {
+    const liquidHoney = warehouse.find(item => item.name === 'Мед жидкий');
+    if (liquidHoney && liquidHoney.amount >= 20) {
+      const coins = 4000;
+      setUserBalance(userBalance + coins);
+      setWarehouse([
+        { id: 2, name: 'Мед жидкий', amount: 25, unit: 'кг', icon: '🍯' },
+      ]);
+      toast.success(`+${coins} ПчелоКоинов! 💰`);
+    }
+  };
+
+  if (!isRegistered) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-green-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-2 border-amber-200 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="text-6xl mb-4">🐝</div>
+            <CardTitle className="text-3xl font-bold text-amber-900">АгроИмперия</CardTitle>
+            <CardDescription className="text-base">Создайте свою ферму в облаке</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nickname">Ваш никнейм</Label>
+              <Input
+                id="nickname"
+                placeholder="Например: ДикийВася89"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                className="border-amber-200"
+              />
+            </div>
+            <Button 
+              onClick={handleRegister} 
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+              size="lg"
+            >
+              Начать путешествие 🚀
+            </Button>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3">
+            <div className="text-sm text-muted-foreground text-center">
+              Станьте лидером топа и получайте эксклюзивные награды! 🏆
+            </div>
+          </CardFooter>
+        </Card>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-green-50">
+      <header className="bg-white/80 backdrop-blur-sm border-b-2 border-amber-200 sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">🐝</div>
+              <div>
+                <h1 className="text-2xl font-bold text-amber-900">АгроИмперия</h1>
+                <p className="text-sm text-muted-foreground">Фермер {nickname}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="text-lg px-4 py-2 border-2 border-amber-400">
+                <Icon name="Coins" className="mr-2" size={20} />
+                {userBalance.toLocaleString()} ПчелоКоинов
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur">
+            <TabsTrigger value="dashboard">
+              <Icon name="LayoutDashboard" className="mr-2" size={18} />
+              Дашборд
+            </TabsTrigger>
+            <TabsTrigger value="rent">
+              <Icon name="Home" className="mr-2" size={18} />
+              Аренда
+            </TabsTrigger>
+            <TabsTrigger value="warehouse">
+              <Icon name="Package" className="mr-2" size={18} />
+              Склад
+            </TabsTrigger>
+            <TabsTrigger value="metrics">
+              <Icon name="Activity" className="mr-2" size={18} />
+              Метрика
+            </TabsTrigger>
+            <TabsTrigger value="leaderboard">
+              <Icon name="Trophy" className="mr-2" size={18} />
+              Топ
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border-2 border-amber-200 hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="text-4xl mb-2">🏡</div>
+                  <CardTitle>Моя Пасека</CardTitle>
+                  <CardDescription>Производство меда и продуктов пчеловодства</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Активных ульев:</span>
+                      <span className="font-semibold">1</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Регион:</span>
+                      <span className="font-semibold">Алтай ⛰️</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-purple-200 opacity-50">
+                <CardHeader>
+                  <div className="text-4xl mb-2">🍷</div>
+                  <CardTitle className="text-muted-foreground">Моя Винодельня</CardTitle>
+                  <CardDescription>Скоро откроется</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="secondary">В разработке</Badge>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-blue-200 opacity-50">
+                <CardHeader>
+                  <div className="text-4xl mb-2">🧀</div>
+                  <CardTitle className="text-muted-foreground">Моя Сыроварня</CardTitle>
+                  <CardDescription>Скоро откроется</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="secondary">В разработке</Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-2 border-green-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Bell" size={24} />
+                  Последние уведомления
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
+                  <div className="text-2xl">🐝</div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Ваши пчелы начали собирать мед</p>
+                    <p className="text-sm text-muted-foreground">Сезон начался! Прогресс: 75%</p>
+                  </div>
+                  <Badge variant="outline">Сегодня</Badge>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                  <div className="text-2xl">📦</div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Товар поступил на склад</p>
+                    <p className="text-sm text-muted-foreground">+53 кг меда в сотах</p>
+                  </div>
+                  <Badge variant="outline">2 дня назад</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="rent" className="space-y-6">
+            <Card className="border-2 border-amber-200">
+              <CardHeader>
+                <CardTitle>Арендовать новый улей</CardTitle>
+                <CardDescription>
+                  Стоимость аренды: 24,000 ПчелоКоинов / год • Средний урожай: 30 кг
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <Label>Выберите регион</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {regions.map((region) => (
+                      <Card
+                        key={region.id}
+                        className={`cursor-pointer transition-all hover:shadow-md ${
+                          selectedRegion === region.id ? 'border-2 border-amber-500 bg-amber-50' : 'border'
+                        }`}
+                        onClick={() => setSelectedRegion(region.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-3xl mb-2">{region.emoji}</div>
+                          <h3 className="font-semibold">{region.name}</h3>
+                          <p className="text-sm text-muted-foreground">{region.description}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Выберите тип улья</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {hiveTypes.map((hive) => (
+                      <Card
+                        key={hive.id}
+                        className={`cursor-pointer transition-all hover:shadow-md ${
+                          selectedHiveType === hive.id ? 'border-2 border-amber-500 bg-amber-50' : 'border'
+                        }`}
+                        onClick={() => setSelectedHiveType(hive.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-3xl mb-2">{hive.icon}</div>
+                          <h3 className="font-semibold">{hive.name}</h3>
+                          <p className="text-sm text-muted-foreground mb-2">{hive.description}</p>
+                          <div className="flex items-center justify-between">
+                            <Badge variant="secondary">{hive.price.toLocaleString()} ₽</Badge>
+                            <span className="text-xs text-muted-foreground">~{hive.avgYield} кг/год</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={handleRentHive} 
+                  className="w-full bg-amber-500 hover:bg-amber-600"
+                  size="lg"
+                  disabled={!selectedRegion || !selectedHiveType}
+                >
+                  <Icon name="ShoppingCart" className="mr-2" />
+                  Арендовать улей за 24,000 ПчелоКоинов
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="warehouse" className="space-y-6">
+            <Card className="border-2 border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Package" size={24} />
+                  Личный склад
+                </CardTitle>
+                <CardDescription>Управление вашими продуктами</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {warehouse.map((item) => (
+                  <Card key={item.id} className="bg-amber-50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="text-4xl">{item.icon}</div>
+                        <div>
+                          <h3 className="font-semibold">{item.name}</h3>
+                          <p className="text-2xl font-bold text-amber-600">
+                            {item.amount} {item.unit}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {item.name === 'Мед в сотах' && (
+                          <Button onClick={handleProcessHoney} variant="outline">
+                            <Icon name="Droplet" className="mr-2" size={18} />
+                            Отжать мед
+                          </Button>
+                        )}
+                        {item.name === 'Мед жидкий' && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                                <Icon name="DollarSign" className="mr-2" size={18} />
+                                Продать
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Продать мед на маркете</DialogTitle>
+                                <DialogDescription>
+                                  Обменяйте ваш мед на ПчелоКоины
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div className="p-4 bg-amber-50 rounded-lg">
+                                  <p className="text-sm text-muted-foreground">Цена ОПТ -20%</p>
+                                  <p className="text-lg font-semibold">200 ₽/кг = 200 ПчелоКоинов/кг</p>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Количество (кг)</Label>
+                                  <Input type="number" placeholder="20" defaultValue="20" />
+                                </div>
+                                <div className="p-4 bg-green-50 rounded-lg">
+                                  <p className="text-sm text-muted-foreground">Вы получите:</p>
+                                  <p className="text-2xl font-bold text-green-600">+4,000 ПчелоКоинов</p>
+                                </div>
+                                <Button onClick={handleSellHoney} className="w-full bg-green-600 hover:bg-green-700">
+                                  Продать мед
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Truck" size={24} />
+                  Упаковка и доставка
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите упаковку" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kubo">Кубтейнер 20 кг</SelectItem>
+                    <SelectItem value="barrel">Боченок дубовый 1 кг</SelectItem>
+                    <SelectItem value="jar">Стеклянная банка 0.5 кг</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="Город доставки" />
+                  <Button variant="outline">
+                    <Icon name="MapPin" size={18} />
+                  </Button>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm">Доставка до ТК: <span className="font-semibold">500 ₽</span></p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="metrics" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-2 border-amber-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Thermometer" size={24} />
+                    Температура улья
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-5xl font-bold text-amber-600 mb-2">+34°C</div>
+                  <p className="text-sm text-muted-foreground">Оптимальная температура</p>
+                  <Progress value={85} className="mt-4" />
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Droplets" size={24} />
+                    Влажность
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-5xl font-bold text-blue-600 mb-2">65%</div>
+                  <p className="text-sm text-muted-foreground">В норме</p>
+                  <Progress value={65} className="mt-4" />
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-green-200 md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="TrendingUp" size={24} />
+                    Прогресс сезона
+                  </CardTitle>
+                  <CardDescription>До конца сбора меда осталось 78 дней</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Progress value={75} className="h-6 mb-4" />
+                  <div className="flex justify-between text-sm">
+                    <span>Начало сезона</span>
+                    <span className="font-semibold text-green-600">75% завершено</span>
+                    <span>Конец сезона</span>
+                  </div>
+                  <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                    <p className="text-lg font-semibold">Прогноз урожая: ~30 кг</p>
+                    <p className="text-sm text-muted-foreground">При текущих условиях</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-2 border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="BarChart3" size={24} />
+                  Статистика производства
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
+                    <span className="text-muted-foreground">Всего собрано меда:</span>
+                    <span className="text-2xl font-bold text-amber-600">53 кг</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                    <span className="text-muted-foreground">Продано меда:</span>
+                    <span className="text-2xl font-bold text-green-600">28 кг</span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span className="text-muted-foreground">Заработано ПчелоКоинов:</span>
+                    <span className="text-2xl font-bold text-blue-600">5,600</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="leaderboard" className="space-y-6">
+            <Card className="border-2 border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Trophy" size={24} />
+                  Топ пасечников
+                </CardTitle>
+                <CardDescription>Лидеры получают эксклюзивные награды и призы</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {leaderboard.map((leader) => (
+                    <div
+                      key={leader.rank}
+                      className={`flex items-center gap-4 p-4 rounded-lg transition-all hover:shadow-md ${
+                        leader.rank <= 3
+                          ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300'
+                          : 'bg-gray-50'
+                      }`}
+                    >
+                      <div className="text-3xl">{leader.badge}</div>
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-amber-200 text-amber-900 font-bold">
+                          {leader.rank}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-bold text-lg">{leader.nickname}</p>
+                        <p className="text-sm text-muted-foreground">{leader.type}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-xl text-amber-600">
+                          {leader.coins.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">ПчелоКоинов</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+              <CardFooter className="flex-col gap-3">
+                <div className="w-full p-4 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg">
+                  <h3 className="font-semibold mb-2">🎁 Награды лидерам:</h3>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• Маточное молоко (премиум-продукт)</li>
+                    <li>• Свечи из пчелиного воска ручной работы</li>
+                    <li>• Набор для настойки из пчелиного мора</li>
+                    <li>• Скидки до 50% на новые ульи</li>
+                    <li>• Бесплатная экскурсия на ферму</li>
+                  </ul>
+                </div>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
-};
-
-export default Index;
+}
