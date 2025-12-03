@@ -52,6 +52,22 @@ export default function Index() {
   const [warehouse, setWarehouse] = useState([
     { id: 1, name: 'Мед в сотах', amount: 53, unit: 'кг', icon: '🍯' },
   ]);
+  const [myCows, setMyCows] = useState<Array<{
+    id: number;
+    name: string;
+    age: number;
+    lactationDay: number;
+    totalMilk: number;
+    status: 'active' | 'rest';
+  }>>([]);
+  const [milkStorage, setMilkStorage] = useState(0);
+  const [dairyProducts, setDairyProducts] = useState({
+    milk: 0,
+    butter: 0,
+    sourCream: 0,
+    kefir: 0,
+    cheese: 0,
+  });
   const [myHives, setMyHives] = useState([
     { id: 1, region: 'Алтай ⛰️', type: 'Стандарт', progress: 75, status: 'active', daysLeft: 120 },
   ]);
@@ -135,6 +151,124 @@ export default function Index() {
     }
   };
 
+  const handleBuyCow = async () => {
+    const cowPrice = 350000;
+    
+    if (userBalance >= cowPrice) {
+      setUserBalance(userBalance - cowPrice);
+      const newCow = {
+        id: myCows.length + 1,
+        name: `Корова №${myCows.length + 1}`,
+        age: 2,
+        lactationDay: 1,
+        totalMilk: 0,
+        status: 'active' as const,
+      };
+      setMyCows([...myCows, newCow]);
+      toast.success('Корова куплена! Начинается лактация 🐄');
+      return;
+    }
+
+    setIsPaymentProcessing(true);
+    try {
+      const response = await fetch('https://functions.poehali.dev/b0e9056d-9118-4528-a8a5-b019c8d4e376', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': nickname,
+        },
+        body: JSON.stringify({
+          amount: cowPrice,
+          description: 'Покупка коровы на ферму',
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.payment_url) {
+        window.open(data.payment_url, '_blank');
+        toast.success('Перенаправляем на страницу оплаты...');
+      } else {
+        toast.error('Ошибка создания платежа');
+      }
+    } catch (error) {
+      toast.error('Ошибка подключения к платежной системе');
+    } finally {
+      setIsPaymentProcessing(false);
+    }
+  };
+
+  const handleCollectMilk = (cowId: number) => {
+    const cow = myCows.find(c => c.id === cowId);
+    if (!cow || cow.lactationDay > 305) {
+      toast.error('Корова не в периоде лактации');
+      return;
+    }
+
+    const currentDate = new Date();
+    const month = currentDate.getMonth();
+    const isSummer = month >= 5 && month <= 8;
+    const dailyMilk = isSummer ? 15 : 10;
+
+    setMilkStorage(prev => prev + dailyMilk);
+    setMyCows(myCows.map(c => 
+      c.id === cowId 
+        ? { ...c, lactationDay: c.lactationDay + 1, totalMilk: c.totalMilk + dailyMilk }
+        : c
+    ));
+    
+    toast.success(`Собрано ${dailyMilk} литров молока! 🥛`);
+  };
+
+  const handleProcessMilk = (productType: string, amount: number) => {
+    let milkNeeded = 0;
+    let productAmount = 0;
+
+    switch (productType) {
+      case 'butter':
+        milkNeeded = amount / 0.06;
+        productAmount = amount;
+        break;
+      case 'sourCream':
+        milkNeeded = amount / 0.1;
+        productAmount = amount;
+        break;
+      case 'kefir':
+        milkNeeded = amount / 0.95;
+        productAmount = amount;
+        break;
+      case 'milk':
+        milkNeeded = amount;
+        productAmount = amount;
+        break;
+      case 'cheese':
+        milkNeeded = amount / 0.1;
+        productAmount = amount;
+        break;
+    }
+
+    if (milkStorage < milkNeeded) {
+      toast.error('Недостаточно молока на складе');
+      return;
+    }
+
+    setMilkStorage(prev => prev - milkNeeded);
+    setDairyProducts(prev => ({
+      ...prev,
+      [productType]: prev[productType as keyof typeof prev] + productAmount,
+    }));
+
+    const productNames: Record<string, string> = {
+      butter: 'масло',
+      sourCream: 'сметана',
+      kefir: 'кефир',
+      milk: 'молоко',
+      cheese: 'сыр',
+    };
+
+    toast.success(`Произведено: ${productAmount} ${productType === 'kefir' || productType === 'milk' ? 'л' : 'г'} ${productNames[productType]}!`);
+  };
+
   const handleSellHoney = () => {
     const liquidHoney = warehouse.find(item => item.name === 'Мед жидкий');
     if (liquidHoney && liquidHoney.amount >= 20) {
@@ -209,14 +343,18 @@ export default function Index() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur">
+          <TabsList className="grid w-full grid-cols-6 bg-white/80 backdrop-blur">
             <TabsTrigger value="dashboard">
               <Icon name="LayoutDashboard" className="mr-2" size={18} />
               Дашборд
             </TabsTrigger>
             <TabsTrigger value="rent">
               <Icon name="Home" className="mr-2" size={18} />
-              Аренда
+              Моя Пасека
+            </TabsTrigger>
+            <TabsTrigger value="farm">
+              <Icon name="Milk" className="mr-2" size={18} />
+              Моя Ферма
             </TabsTrigger>
             <TabsTrigger value="warehouse">
               <Icon name="Package" className="mr-2" size={18} />
@@ -237,7 +375,7 @@ export default function Index() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Icon name="Home" size={24} />
-                  Моя Ферма
+                  Моя Пасека
                 </CardTitle>
                 <CardDescription>Ваши арендованные ульи и текущий статус</CardDescription>
               </CardHeader>
@@ -450,6 +588,248 @@ export default function Index() {
                   Арендовать улей за 24,000 ПчелоКоинов
                 </Button>
               </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="farm" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="border-2 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Milk" size={24} />
+                    Купить корову
+                  </CardTitle>
+                  <CardDescription>
+                    Стоимость: 350,000 ПчелоКоинов • Период лактации: 305 дней
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-center justify-center mb-4">
+                      <span className="text-8xl">🐄</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Возраст:</span>
+                        <span className="font-semibold">2 года</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Молоко летом:</span>
+                        <span className="font-semibold">~15 л/день</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Молоко зимой:</span>
+                        <span className="font-semibold">~10 л/день</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Период лактации:</span>
+                        <span className="font-semibold">305 дней</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={handleBuyCow}
+                    className="w-full bg-blue-500 hover:bg-blue-600"
+                    size="lg"
+                    disabled={isPaymentProcessing}
+                  >
+                    <Icon name="ShoppingCart" className="mr-2" />
+                    Купить корову за 350,000 ПчелоКоинов
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              <Card className="border-2 border-green-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Droplet" size={24} />
+                    Склад молока
+                  </CardTitle>
+                  <CardDescription>Собранное молоко и его переработка</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-center mb-4">
+                      <span className="text-5xl">🥛</span>
+                      <div className="text-3xl font-bold text-green-600 mt-2">
+                        {milkStorage.toFixed(1)} л
+                      </div>
+                      <p className="text-sm text-muted-foreground">На складе</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Переработать молоко в:</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const amount = Math.floor(milkStorage * 0.06);
+                          if (amount > 0) handleProcessMilk('butter', amount);
+                        }}
+                        disabled={milkStorage < 1}
+                      >
+                        🧈 Масло
+                        <span className="text-xs ml-1">(60г/л)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const amount = Math.floor(milkStorage * 0.1);
+                          if (amount > 0) handleProcessMilk('sourCream', amount);
+                        }}
+                        disabled={milkStorage < 1}
+                      >
+                        🥄 Сметана
+                        <span className="text-xs ml-1">(100г/л)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const amount = Math.floor(milkStorage * 0.95 * 10) / 10;
+                          if (amount > 0) handleProcessMilk('kefir', amount);
+                        }}
+                        disabled={milkStorage < 1}
+                      >
+                        🥛 Кефир
+                        <span className="text-xs ml-1">(950мл/л)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const amount = Math.floor(milkStorage);
+                          if (amount > 0) handleProcessMilk('milk', amount);
+                        }}
+                        disabled={milkStorage < 1}
+                      >
+                        🍼 Молоко
+                        <span className="text-xs ml-1">(1л/л)</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="col-span-2"
+                        onClick={() => {
+                          const amount = Math.floor(milkStorage * 0.1);
+                          if (amount > 0) handleProcessMilk('cheese', amount);
+                        }}
+                        disabled={milkStorage < 1}
+                      >
+                        🧀 Сыр
+                        <span className="text-xs ml-1">(100г/л)</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-2">
+                    <Label>Готовая продукция:</Label>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between bg-amber-50 p-2 rounded">
+                        <span>🧈 Масло:</span>
+                        <span className="font-semibold">{dairyProducts.butter}г</span>
+                      </div>
+                      <div className="flex justify-between bg-amber-50 p-2 rounded">
+                        <span>🥄 Сметана:</span>
+                        <span className="font-semibold">{dairyProducts.sourCream}г</span>
+                      </div>
+                      <div className="flex justify-between bg-amber-50 p-2 rounded">
+                        <span>🥛 Кефир:</span>
+                        <span className="font-semibold">{dairyProducts.kefir.toFixed(1)}л</span>
+                      </div>
+                      <div className="flex justify-between bg-amber-50 p-2 rounded">
+                        <span>🍼 Молоко:</span>
+                        <span className="font-semibold">{dairyProducts.milk}л</span>
+                      </div>
+                      <div className="flex justify-between bg-amber-50 p-2 rounded col-span-2">
+                        <span>🧀 Сыр:</span>
+                        <span className="font-semibold">{dairyProducts.cheese}г</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={Object.values(dairyProducts).every(v => v === 0)}
+                  >
+                    <Icon name="Truck" className="mr-2" />
+                    Оформить доставку
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+
+            <Card className="border-2 border-purple-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Milk" size={24} />
+                  Мои коровы
+                </CardTitle>
+                <CardDescription>Управление вашим стадом</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {myCows.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="Milk" size={48} className="mx-auto mb-4 opacity-30" />
+                    <p>У вас пока нет коров</p>
+                    <p className="text-sm mt-2">Купите первую корову чтобы начать производство молока</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {myCows.map(cow => (
+                      <Card key={cow.id} className="border border-blue-100 bg-gradient-to-br from-blue-50 to-white">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-3xl">🐄</span>
+                                <h3 className="font-semibold text-lg">{cow.name}</h3>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Возраст: {cow.age} года
+                              </p>
+                            </div>
+                            <Badge variant={cow.status === 'active' ? 'default' : 'secondary'} className="bg-green-500">
+                              {cow.lactationDay <= 305 ? 'Активна' : 'Отдых'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="text-sm">
+                                <span className="text-muted-foreground">День лактации:</span>
+                                <p className="font-semibold">{cow.lactationDay}/305</p>
+                              </div>
+                              <div className="text-sm">
+                                <span className="text-muted-foreground">Всего молока:</span>
+                                <p className="font-semibold">{cow.totalMilk} л</p>
+                              </div>
+                            </div>
+                            
+                            <Progress value={(cow.lactationDay / 305) * 100} className="h-2" />
+                            
+                            <Button 
+                              className="w-full bg-blue-500 hover:bg-blue-600"
+                              size="sm"
+                              onClick={() => handleCollectMilk(cow.id)}
+                              disabled={cow.lactationDay > 305}
+                            >
+                              <Icon name="Droplet" className="mr-2" size={16} />
+                              Собрать молоко
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </TabsContent>
 
