@@ -77,6 +77,13 @@ export default function Index() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [showLiveStream, setShowLiveStream] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [processingAmounts, setProcessingAmounts] = useState({
+    butter: '',
+    sourCream: '',
+    kefir: '',
+    milk: '',
+    cheese: '',
+  });
 
   const handleRegister = () => {
     if (nickname.trim()) {
@@ -220,35 +227,37 @@ export default function Index() {
     toast.success(`Собрано ${dailyMilk} литров молока! 🥛`);
   };
 
-  const handleProcessMilk = (productType: string, amount: number) => {
+  const handleProcessMilk = (productType: string) => {
+    const inputAmount = parseFloat(processingAmounts[productType as keyof typeof processingAmounts]);
+    
+    if (!inputAmount || inputAmount <= 0) {
+      toast.error('Введите корректное количество');
+      return;
+    }
+
     let milkNeeded = 0;
-    let productAmount = 0;
+    const productAmount = inputAmount;
 
     switch (productType) {
       case 'butter':
-        milkNeeded = amount / 0.06;
-        productAmount = amount;
+        milkNeeded = inputAmount / 0.06;
         break;
       case 'sourCream':
-        milkNeeded = amount / 0.1;
-        productAmount = amount;
+        milkNeeded = inputAmount / 0.1;
         break;
       case 'kefir':
-        milkNeeded = amount / 0.95;
-        productAmount = amount;
+        milkNeeded = inputAmount / 0.95;
         break;
       case 'milk':
-        milkNeeded = amount;
-        productAmount = amount;
+        milkNeeded = inputAmount;
         break;
       case 'cheese':
-        milkNeeded = amount / 0.1;
-        productAmount = amount;
+        milkNeeded = inputAmount / 0.1;
         break;
     }
 
     if (milkStorage < milkNeeded) {
-      toast.error('Недостаточно молока на складе');
+      toast.error(`Недостаточно молока. Нужно: ${milkNeeded.toFixed(1)}л, есть: ${milkStorage.toFixed(1)}л`);
       return;
     }
 
@@ -256,6 +265,11 @@ export default function Index() {
     setDairyProducts(prev => ({
       ...prev,
       [productType]: prev[productType as keyof typeof prev] + productAmount,
+    }));
+
+    setProcessingAmounts(prev => ({
+      ...prev,
+      [productType]: '',
     }));
 
     const productNames: Record<string, string> = {
@@ -660,70 +674,143 @@ export default function Index() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>Переработать молоко в:</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const amount = Math.floor(milkStorage * 0.06);
-                          if (amount > 0) handleProcessMilk('butter', amount);
-                        }}
-                        disabled={milkStorage < 1}
-                      >
-                        🧈 Масло
-                        <span className="text-xs ml-1">(60г/л)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const amount = Math.floor(milkStorage * 0.1);
-                          if (amount > 0) handleProcessMilk('sourCream', amount);
-                        }}
-                        disabled={milkStorage < 1}
-                      >
-                        🥄 Сметана
-                        <span className="text-xs ml-1">(100г/л)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const amount = Math.floor(milkStorage * 0.95 * 10) / 10;
-                          if (amount > 0) handleProcessMilk('kefir', amount);
-                        }}
-                        disabled={milkStorage < 1}
-                      >
-                        🥛 Кефир
-                        <span className="text-xs ml-1">(950мл/л)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const amount = Math.floor(milkStorage);
-                          if (amount > 0) handleProcessMilk('milk', amount);
-                        }}
-                        disabled={milkStorage < 1}
-                      >
-                        🍼 Молоко
-                        <span className="text-xs ml-1">(1л/л)</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="col-span-2"
-                        onClick={() => {
-                          const amount = Math.floor(milkStorage * 0.1);
-                          if (amount > 0) handleProcessMilk('cheese', amount);
-                        }}
-                        disabled={milkStorage < 1}
-                      >
-                        🧀 Сыр
-                        <span className="text-xs ml-1">(100г/л)</span>
-                      </Button>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center bg-amber-50 p-3 rounded-lg">
+                        <span className="text-2xl">🧈</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Масло</span>
+                          <span className="text-xs text-muted-foreground">60г из 1л молока</span>
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="w-20 h-8 text-sm"
+                            value={processingAmounts.butter}
+                            onChange={(e) => setProcessingAmounts({...processingAmounts, butter: e.target.value})}
+                            disabled={milkStorage < 1}
+                          />
+                          <span className="text-xs text-muted-foreground">г</span>
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleProcessMilk('butter')}
+                            disabled={!processingAmounts.butter || milkStorage < 1}
+                          >
+                            <Icon name="Plus" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center bg-amber-50 p-3 rounded-lg">
+                        <span className="text-2xl">🥄</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Сметана</span>
+                          <span className="text-xs text-muted-foreground">100г из 1л молока</span>
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="w-20 h-8 text-sm"
+                            value={processingAmounts.sourCream}
+                            onChange={(e) => setProcessingAmounts({...processingAmounts, sourCream: e.target.value})}
+                            disabled={milkStorage < 1}
+                          />
+                          <span className="text-xs text-muted-foreground">г</span>
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleProcessMilk('sourCream')}
+                            disabled={!processingAmounts.sourCream || milkStorage < 1}
+                          >
+                            <Icon name="Plus" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center bg-amber-50 p-3 rounded-lg">
+                        <span className="text-2xl">🥛</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Кефир</span>
+                          <span className="text-xs text-muted-foreground">950мл из 1л молока</span>
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="w-20 h-8 text-sm"
+                            value={processingAmounts.kefir}
+                            onChange={(e) => setProcessingAmounts({...processingAmounts, kefir: e.target.value})}
+                            disabled={milkStorage < 1}
+                          />
+                          <span className="text-xs text-muted-foreground">л</span>
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleProcessMilk('kefir')}
+                            disabled={!processingAmounts.kefir || milkStorage < 1}
+                          >
+                            <Icon name="Plus" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center bg-amber-50 p-3 rounded-lg">
+                        <span className="text-2xl">🍼</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Молоко</span>
+                          <span className="text-xs text-muted-foreground">1л из 1л молока</span>
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="w-20 h-8 text-sm"
+                            value={processingAmounts.milk}
+                            onChange={(e) => setProcessingAmounts({...processingAmounts, milk: e.target.value})}
+                            disabled={milkStorage < 1}
+                          />
+                          <span className="text-xs text-muted-foreground">л</span>
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleProcessMilk('milk')}
+                            disabled={!processingAmounts.milk || milkStorage < 1}
+                          >
+                            <Icon name="Plus" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center bg-amber-50 p-3 rounded-lg">
+                        <span className="text-2xl">🧀</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">Сыр</span>
+                          <span className="text-xs text-muted-foreground">100г из 1л молока</span>
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            className="w-20 h-8 text-sm"
+                            value={processingAmounts.cheese}
+                            onChange={(e) => setProcessingAmounts({...processingAmounts, cheese: e.target.value})}
+                            disabled={milkStorage < 1}
+                          />
+                          <span className="text-xs text-muted-foreground">г</span>
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleProcessMilk('cheese')}
+                            disabled={!processingAmounts.cheese || milkStorage < 1}
+                          >
+                            <Icon name="Plus" size={16} />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
