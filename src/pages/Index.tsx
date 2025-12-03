@@ -52,6 +52,9 @@ export default function Index() {
   const [warehouse, setWarehouse] = useState([
     { id: 1, name: 'Мед в сотах', amount: 53, unit: 'кг', icon: '🍯' },
   ]);
+  const [myHives, setMyHives] = useState([
+    { id: 1, region: 'Алтай ⛰️', type: 'Стандарт', progress: 75, status: 'active', daysLeft: 120 },
+  ]);
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedHiveType, setSelectedHiveType] = useState('');
   const [nickname, setNickname] = useState('');
@@ -73,10 +76,22 @@ export default function Index() {
     }
     
     const hive = hiveTypes.find(h => h.id === selectedHiveType);
-    if (!hive) return;
+    const region = regions.find(r => r.id === selectedRegion);
+    if (!hive || !region) return;
 
     if (userBalance >= hive.price) {
       setUserBalance(userBalance - hive.price);
+      
+      const newHive = {
+        id: myHives.length + 1,
+        region: region.name,
+        type: hive.name,
+        progress: 0,
+        status: 'active' as const,
+        daysLeft: 365,
+      };
+      setMyHives([...myHives, newHive]);
+      
       toast.success(`Улей арендован! Сезон начался 🎉`);
       return;
     }
@@ -91,7 +106,7 @@ export default function Index() {
         },
         body: JSON.stringify({
           amount: hive.price,
-          description: `Аренда улья ${hive.name} в регионе ${regions.find(r => r.id === selectedRegion)?.name}`,
+          description: `Аренда улья ${hive.name} в регионе ${region.name}`,
         }),
       });
 
@@ -218,6 +233,85 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
+            <Card className="border-2 border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Home" size={24} />
+                  Моя Ферма
+                </CardTitle>
+                <CardDescription>Ваши арендованные ульи и текущий статус</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {myHives.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Icon name="Home" size={48} className="mx-auto mb-4 opacity-30" />
+                    <p>У вас пока нет арендованных ульев</p>
+                    <Button className="mt-4 bg-amber-500 hover:bg-amber-600" onClick={() => {
+                      const tabs = document.querySelector('[value="rent"]');
+                      if (tabs instanceof HTMLElement) tabs.click();
+                    }}>
+                      Арендовать первый улей
+                    </Button>
+                  </div>
+                ) : (
+                  myHives.map(hive => (
+                    <Card key={hive.id} className="border border-amber-100 bg-gradient-to-br from-amber-50 to-white">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-3xl">🐝</span>
+                              <h3 className="font-semibold text-lg">Улей {hive.type}</h3>
+                            </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Icon name="MapPin" size={14} />
+                              {hive.region}
+                            </p>
+                          </div>
+                          <Badge variant={hive.status === 'active' ? 'default' : 'secondary'} className="bg-green-500">
+                            Активен
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span className="text-muted-foreground">Прогресс сбора меда</span>
+                              <span className="font-semibold">{hive.progress}%</span>
+                            </div>
+                            <Progress value={hive.progress} className="h-2" />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 pt-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Icon name="Calendar" size={16} className="text-amber-500" />
+                              <span className="text-muted-foreground">Осталось дней:</span>
+                              <span className="font-semibold">{hive.daysLeft}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Icon name="TrendingUp" size={16} className="text-green-500" />
+                              <span className="text-muted-foreground">Ожидается:</span>
+                              <span className="font-semibold">~30 кг</span>
+                            </div>
+                          </div>
+
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full mt-2"
+                            onClick={() => setShowLiveStream(true)}
+                          >
+                            <Icon name="Video" size={16} className="mr-2" />
+                            Смотреть трансляцию
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-2 border-amber-200 hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -229,11 +323,11 @@ export default function Index() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Активных ульев:</span>
-                      <span className="font-semibold">1</span>
+                      <span className="font-semibold">{myHives.length}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Регион:</span>
-                      <span className="font-semibold">Алтай ⛰️</span>
+                      <span className="text-muted-foreground">Регионов:</span>
+                      <span className="font-semibold">{new Set(myHives.map(h => h.region)).size}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -596,6 +690,11 @@ export default function Index() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <LiveStreamModal 
+        isOpen={showLiveStream} 
+        onClose={() => setShowLiveStream(false)} 
+      />
     </div>
   );
 }
