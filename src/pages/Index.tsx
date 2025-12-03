@@ -48,7 +48,7 @@ const leaderboard = [
 ];
 
 export default function Index() {
-  const [userBalance, setUserBalance] = useState(51000);
+  const [userBalance, setUserBalance] = useState(1051000);
   const [warehouse, setWarehouse] = useState([
     { id: 1, name: 'Мед в сотах', amount: 53, unit: 'кг', icon: '🍯' },
   ]);
